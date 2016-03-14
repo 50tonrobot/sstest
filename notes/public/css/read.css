@@ -1,0 +1,20 @@
+.author-info
+{
+  font-style: italic;
+  color:#999;
+}
+
+.note-body
+{
+  padding: 10px;
+}
+
+.modifier-options
+{
+  float:right;
+}
+
+.btn-danger, .btn-primary
+{
+  margin-left:8px;
+}

@@ -1,0 +1,21 @@
+.h1, .h2, .h3,.h4, .h5, .h6, h1, h2, h3, h4, h5, h6
+{
+  margin-top: 0px;
+}
+
+header
+{
+  padding-bottom: 5px;
+}
+
+header.well
+{
+  background: lightblue;
+}
+
+.form-control
+{
+  display: block;
+  margin-top:6px;
+  margin-bottom:6px;
+}

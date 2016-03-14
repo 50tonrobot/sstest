@@ -1,0 +1,43 @@
+.notes-list .list-group-item .glyphicon-trash
+{
+  float:right;
+  color: #aaa;
+  cursor: pointer;
+}
+
+.notes-list .list-group-item .glyphicon-trash:hover
+{
+  color: darkred;
+  font-size:large;
+}
+
+.notes-list .list-group-item
+{
+  cursor: pointer;
+}
+
+.notes-list .list-group-item:hover
+{
+  background-color: #ccc;
+}
+
+.notes-list .list-group-item .note-title
+{
+  font-weight: bold;
+}
+
+.notes-list .list-group-item .author-info
+{
+  float:right;
+  margin-right:10px;
+}
+
+.notes-list .list-group-item:hover .author-info
+{
+  color: #fff;
+}
+
+.notes-list .list-group-item .author-info
+{
+  color:#aaa;
+}
