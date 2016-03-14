@@ -1,9 +1,9 @@
-The following Pre-Requisites are needed:
+1. The following Pre-Requisites are needed:
   - Composer
   - Lumen Micro-Framework v5.2
   - Mysql Server
 
-The Lumen .env file has been configured with the following:
+2. The Lumen .env file has been configured with the following:
 /*************************
  *   DB_CONNECTION=mysql
  *   DB_HOST=127.0.0.1
@@ -13,10 +13,12 @@ The Lumen .env file has been configured with the following:
  *   DB_PASSWORD=dTRKn3JPWbAAxRE42uE3dkFaJOC7nuT9
  *************************/
 
-You can configure your mysql server according to these settings; 
-  or update them in the .env file.
+  You can configure your mysql server according to these settings; 
+    or update them in the .env file.
 
-To create the test user, you will need to execute this query:
+3. Apply the migrations using the command "php artisan migrate"
+
+4. To create the test user, you will need to execute this query:
 
 INSERT INTO users (name,email,password,created_at,updated_at)
 VALUES (  'test',
