@@ -79,12 +79,12 @@ abstract class TestCase extends PHPUnit_Framework_TestCase
     {
         $uses = array_flip(class_uses_recursive(get_class($this)));
 
-        if (isset($uses[DatabaseTransactions::class])) {
-            $this->beginDatabaseTransaction();
-        }
-
         if (isset($uses[DatabaseMigrations::class])) {
             $this->runDatabaseMigrations();
+        }
+
+        if (isset($uses[DatabaseTransactions::class])) {
+            $this->beginDatabaseTransaction();
         }
 
         if (isset($uses[WithoutMiddleware::class])) {
@@ -241,6 +241,28 @@ abstract class TestCase extends PHPUnit_Framework_TestCase
             $mock->shouldReceive('dispatch')->atLeast()->once()
                 ->with(Mockery::type($job));
         }
+
+        $this->app->instance(
+            'Illuminate\Contracts\Bus\Dispatcher', $mock
+        );
+
+        return $this;
+    }
+
+    /**
+     * Mock the job dispatcher so all jobs are silenced and collected.
+     *
+     * @return $this
+     */
+    protected function withoutJobs()
+    {
+        unset($this->app->availableBindings['Illuminate\Contracts\Bus\Dispatcher']);
+
+        $mock = Mockery::mock('Illuminate\Bus\Dispatcher[dispatch]', [$this->app]);
+
+        $mock->shouldReceive('dispatch')->andReturnUsing(function ($dispatched) {
+            $this->dispatchedJobs[] = $dispatched;
+        });
 
         $this->app->instance(
             'Illuminate\Contracts\Bus\Dispatcher', $mock

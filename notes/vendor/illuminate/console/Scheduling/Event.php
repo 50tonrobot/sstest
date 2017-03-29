@@ -64,6 +64,13 @@ class Event
     public $withoutOverlapping = false;
 
     /**
+     * Indicates if the command should run in background.
+     *
+     * @var bool
+     */
+    public $runInBackground = false;
+
+    /**
      * The array of filter callbacks.
      *
      * @var array
@@ -142,7 +149,11 @@ class Event
      */
     public function run(Container $container)
     {
-        $this->runCommandInForeground($container);
+        if (! $this->runInBackground) {
+            $this->runCommandInForeground($container);
+        } else {
+            $this->runCommandInBackground();
+        }
     }
 
     /**
@@ -160,6 +171,18 @@ class Event
         ))->run();
 
         $this->callAfterCallbacks($container);
+    }
+
+    /**
+     * Run the command in the background.
+     *
+     * @return void
+     */
+    protected function runCommandInBackground()
+    {
+        (new Process(
+            $this->buildCommand(), base_path(), null, null, null
+        ))->run();
     }
 
     /**
@@ -200,12 +223,16 @@ class Event
         $redirect = $this->shouldAppendOutput ? ' >> ' : ' > ';
 
         if ($this->withoutOverlapping) {
-            $command = '(touch '.$this->mutexPath().'; '.$this->command.'; rm '.$this->mutexPath().')'.$redirect.$output.' 2>&1 &';
+            if (windows_os()) {
+                $command = '(echo \'\' > "'.$this->mutexPath().'" & '.$this->command.' & del "'.$this->mutexPath().'")'.$redirect.$output.' 2>&1 &';
+            } else {
+                $command = '(touch '.$this->mutexPath().'; '.$this->command.'; rm '.$this->mutexPath().')'.$redirect.$output.' 2>&1 &';
+            }
         } else {
             $command = $this->command.$redirect.$output.' 2>&1 &';
         }
 
-        return $this->user ? 'sudo -u '.$this->user.' '.$command : $command;
+        return $this->user && ! windows_os() ? 'sudo -u '.$this->user.' -- sh -c \''.$command.'\'' : $command;
     }
 
     /**
@@ -215,7 +242,7 @@ class Event
      */
     protected function mutexPath()
     {
-        return storage_path('framework/schedule-'.sha1($this->expression.$this->command));
+        return storage_path('framework'.DIRECTORY_SEPARATOR.'schedule-'.sha1($this->expression.$this->command));
     }
 
     /**
@@ -314,7 +341,7 @@ class Event
      */
     public function hourly()
     {
-        return $this->cron('0 * * * * *');
+        return $this->spliceIntoPosition(1, 0);
     }
 
     /**
@@ -324,7 +351,8 @@ class Event
      */
     public function daily()
     {
-        return $this->cron('0 0 * * * *');
+        return $this->spliceIntoPosition(1, 0)
+                    ->spliceIntoPosition(2, 0);
     }
 
     /**
@@ -454,7 +482,9 @@ class Event
      */
     public function weekly()
     {
-        return $this->cron('0 0 * * 0 *');
+        return $this->spliceIntoPosition(1, 0)
+                    ->spliceIntoPosition(2, 0)
+                    ->spliceIntoPosition(5, 0);
     }
 
     /**
@@ -478,7 +508,23 @@ class Event
      */
     public function monthly()
     {
-        return $this->cron('0 0 1 * * *');
+        return $this->spliceIntoPosition(1, 0)
+                    ->spliceIntoPosition(2, 0)
+                    ->spliceIntoPosition(3, 1);
+    }
+
+    /**
+     * Schedule the event to run monthly on a given day and time.
+     *
+     * @param int  $day
+     * @param string  $time
+     * @return $this
+     */
+    public function monthlyOn($day = 1, $time = '0:0')
+    {
+        $this->dailyAt($time);
+
+        return $this->spliceIntoPosition(3, $day);
     }
 
     /**
@@ -488,7 +534,10 @@ class Event
      */
     public function quarterly()
     {
-        return $this->cron('0 0 1 */3 *');
+        return $this->spliceIntoPosition(1, 0)
+                    ->spliceIntoPosition(2, 0)
+                    ->spliceIntoPosition(3, 1)
+                    ->spliceIntoPosition(4, '*/3');
     }
 
     /**
@@ -498,7 +547,10 @@ class Event
      */
     public function yearly()
     {
-        return $this->cron('0 0 1 1 * *');
+        return $this->spliceIntoPosition(1, 0)
+                    ->spliceIntoPosition(2, 0)
+                    ->spliceIntoPosition(3, 1)
+                    ->spliceIntoPosition(4, 1);
     }
 
     /**
@@ -508,7 +560,7 @@ class Event
      */
     public function everyMinute()
     {
-        return $this->cron('* * * * * *');
+        return $this->spliceIntoPosition(1, '*');
     }
 
     /**
@@ -518,7 +570,7 @@ class Event
      */
     public function everyFiveMinutes()
     {
-        return $this->cron('*/5 * * * * *');
+        return $this->spliceIntoPosition(1, '*/5');
     }
 
     /**
@@ -528,7 +580,7 @@ class Event
      */
     public function everyTenMinutes()
     {
-        return $this->cron('*/10 * * * * *');
+        return $this->spliceIntoPosition(1, '*/10');
     }
 
     /**
@@ -538,7 +590,7 @@ class Event
      */
     public function everyThirtyMinutes()
     {
-        return $this->cron('0,30 * * * * *');
+        return $this->spliceIntoPosition(1, '0,30');
     }
 
     /**
@@ -552,6 +604,58 @@ class Event
         $days = is_array($days) ? $days : func_get_args();
 
         return $this->spliceIntoPosition(5, implode(',', $days));
+    }
+
+    /**
+     * Schedule the event to run between start and end time.
+     *
+     * @param  string  $startTime
+     * @param  string  $endTime
+     * @return $this
+     */
+    public function between($startTime, $endTime)
+    {
+        return $this->when($this->inTimeInterval($startTime, $endTime));
+    }
+
+    /**
+     * Schedule the event to not run between start and end time.
+     *
+     * @param  string  $startTime
+     * @param  string  $endTime
+     * @return $this
+     */
+    public function unlessBetween($startTime, $endTime)
+    {
+        return $this->skip($this->inTimeInterval($startTime, $endTime));
+    }
+
+    /**
+     * Schedule the event to run between start and end time.
+     *
+     * @param  string  $startTime
+     * @param  string  $endTime
+     * @return \Closure
+     */
+    private function inTimeInterval($startTime, $endTime)
+    {
+        return function () use ($startTime, $endTime) {
+            $now = Carbon::now()->getTimestamp();
+
+            return $now >= strtotime($startTime) && $now <= strtotime($endTime);
+        };
+    }
+
+    /**
+     * State that the command should run in background.
+     *
+     * @return $this
+     */
+    public function runInBackground()
+    {
+        $this->runInBackground = true;
+
+        return $this;
     }
 
     /**

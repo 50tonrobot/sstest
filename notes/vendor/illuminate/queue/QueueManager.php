@@ -64,6 +64,17 @@ class QueueManager implements FactoryContract, MonitorContract
     }
 
     /**
+     * Register an event listener for the exception occurred job event.
+     *
+     * @param  mixed  $callback
+     * @return void
+     */
+    public function exceptionOccurred($callback)
+    {
+        $this->app['events']->listen(Events\JobExceptionOccurred::class, $callback);
+    }
+
+    /**
      * Register an event listener for the daemon queue loop.
      *
      * @param  mixed  $callback
@@ -124,8 +135,6 @@ class QueueManager implements FactoryContract, MonitorContract
             $this->connections[$name] = $this->resolve($name);
 
             $this->connections[$name]->setContainer($this->app);
-
-            $this->connections[$name]->setEncrypter($this->app['encrypter']);
         }
 
         return $this->connections[$name];
@@ -193,7 +202,7 @@ class QueueManager implements FactoryContract, MonitorContract
      */
     protected function getConfig($name)
     {
-        if ($name === null || $name === 'null') {
+        if (is_null($name) || $name === 'null') {
             return ['driver' => 'null'];
         }
 
@@ -251,8 +260,6 @@ class QueueManager implements FactoryContract, MonitorContract
      */
     public function __call($method, $parameters)
     {
-        $callable = [$this->connection(), $method];
-
-        return call_user_func_array($callable, $parameters);
+        return $this->connection()->$method(...$parameters);
     }
 }

@@ -3,6 +3,7 @@
 use Mockery as m;
 use Illuminate\Http\Request;
 use Laravel\Lumen\Application;
+use Symfony\Component\HttpFoundation\Request as SymfonyRequest;
 
 class FullApplicationTest extends PHPUnit_Framework_TestCase
 {
@@ -23,6 +24,18 @@ class FullApplicationTest extends PHPUnit_Framework_TestCase
 
         $this->assertEquals(200, $response->getStatusCode());
         $this->assertEquals('Hello World', $response->getContent());
+    }
+
+    public function testBasicSymfonyRequest()
+    {
+        $app = new Application;
+
+        $app->get('/', function () {
+            return response('Hello World');
+        });
+
+        $response = $app->handle(SymfonyRequest::create('/', 'GET'));
+        $this->assertEquals(200, $response->getStatusCode());
     }
 
     public function testAddRouteMultipleMethodRequest()
@@ -452,6 +465,18 @@ class FullApplicationTest extends PHPUnit_Framework_TestCase
         $this->assertEquals('Middleware', $response->getContent());
     }
 
+    public function testBasicInvokableActionDispatching()
+    {
+        $app = new Application;
+
+        $app->get('/action/{id}', 'LumenTestAction');
+
+        $response = $app->handle(Request::create('/action/199', 'GET'));
+
+        $this->assertEquals(200, $response->getStatusCode());
+        $this->assertEquals('199', $response->getContent());
+    }
+
     public function testEnvironmentDetection()
     {
         $app = new Application;
@@ -543,6 +568,84 @@ class FullApplicationTest extends PHPUnit_Framework_TestCase
 
         $this->assertInstanceOf('Illuminate\Contracts\Validation\Factory', $validator);
     }
+
+    public function testCanMergeUserProvidedFacadesWithDefaultOnes()
+    {
+        $app = new Application();
+
+        $aliases = [
+            UserFacade::class => 'Foo',
+        ];
+
+        $app->withFacades(true, $aliases);
+
+        $this->assertTrue(class_exists('Foo'));
+    }
+
+    public function testNestedGroupMiddlewaresRequest()
+    {
+        $app = new Application();
+
+        $app->group(['middleware' => 'middleware1'], function ($app) {
+            $app->group(['middleware' => 'middleware2|middleware3'], function ($app) {
+                $app->get('test', 'LumenTestController@show');
+            });
+        });
+
+        $route = $app->getRoutes()['GET/test'];
+
+        $this->assertEquals([
+            'middleware1',
+            'middleware2',
+            'middleware3',
+        ], $route['action']['middleware']);
+    }
+
+    public function testNestedGroupNamespaceRequest()
+    {
+        $app = new Application();
+
+        $app->group(['namespace' => 'Hello'], function ($app) {
+            $app->group(['namespace' => 'World'], function ($app) {
+                $app->get('/world', 'Class@method');
+            });
+        });
+
+        $routes = $app->getRoutes();
+
+        $route = $routes['GET/world'];
+
+        $this->assertEquals('Hello\\World\\Class@method', $route['action']['uses']);
+    }
+
+    public function testNestedGroupPrefixRequest()
+    {
+        $app = new Application();
+
+        $app->group(['prefix' => 'hello'], function ($app) {
+            $app->group(['prefix' => 'world'], function ($app) {
+                $app->get('/world', 'Class@method');
+            });
+        });
+
+        $routes = $app->getRoutes();
+
+        $this->assertArrayHasKey('GET/hello/world/world', $routes);
+    }
+
+    public function testNestedGroupAsRequest()
+    {
+        $app = new Application();
+
+        $app->group(['as' => 'hello'], function ($app) {
+            $app->group(['as' => 'world'], function ($app) {
+                $app->get('/world', 'Class@method');
+            });
+        });
+
+        $this->assertArrayHasKey('hello.world', $app->namedRoutes);
+        $this->assertEquals('/world', $app->namedRoutes['hello.world']);
+    }
 }
 
 class LumenTestService
@@ -607,6 +710,18 @@ class LumenTestParameterizedMiddleware
     {
         return response("Middleware - $parameter1 - $parameter2");
     }
+}
+
+class LumenTestAction
+{
+    public function __invoke($id)
+    {
+        return $id;
+    }
+}
+
+class UserFacade
+{
 }
 
 class LumenTestTerminateMiddleware
