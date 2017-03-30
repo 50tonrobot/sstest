@@ -2,9 +2,12 @@ version: '2'
 services:
   demo:
     build: .
+    container_name: sstest_demo
     ports:
       - "80:80"
+    tty: true
   memcache:
+    container_name: sstest_memcache
     image: memcached
     ports:
       - "11211:11211"
