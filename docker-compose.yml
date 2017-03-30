@@ -1,0 +1,10 @@
+version: '2'
+services:
+  demo:
+    build: .
+    ports:
+      - "80:80"
+  memcache:
+    image: memcached
+    ports:
+      - "11211:11211"
