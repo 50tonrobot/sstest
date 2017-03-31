@@ -27,12 +27,16 @@ class LoginController extends Controller
     }
 
     $user = DB::table('users')->where('email', $request->email)->first();
+
+    error_log( (!empty($user))? 'user-true' : user-false );
+    error_log( (password_verify( $request->password , $user->password))? 'password-pass' : 'password-fail' );
+
     if(!empty($user) && password_verify( $request->password , $user->password))
     {
       $result = DB::select("SELECT UUID() as id");
       $update = DB::select("
         INSERT INTO user_sessions (user_id,id,created_at,updated_at)
-        VALUES ({$user->id},'{$result[0]->id}',now(),now()) 
+        VALUES ({$user->id},'{$result[0]->id}',now(),now())
         ON DUPLICATE KEY UPDATE user_sessions.id = '{$result[0]->id}',user_sessions.updated_at=now()");
 
       setcookie('notes_app_session', $result[0]->id, time() + (86400 * 30), "/"); // 86400 = 1 day

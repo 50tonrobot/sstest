@@ -45,20 +45,20 @@ $app->get('logout', 'LoginController@Logout');
 
 $app->group(['middleware' => 'auth'], function () use ($app) {
 
-    $app->get('dashboard', ['as' => 'dashboard', 
-      'uses' => '\App\Http\Controllers\NotesController@index']);
+    $app->get('dashboard', ['as' => 'dashboard',
+      'uses' => 'NotesController@index']);
 
-    $app->get('note/{note}', '\App\Http\Controllers\NotesController@read');
+    $app->get('note/{note}', 'NotesController@read');
 
-    $app->get('note/{note}/edit', '\App\Http\Controllers\NotesController@edit');
+    $app->get('note/{note}/edit', 'NotesController@edit');
 
-    $app->post('dashboard', ['as' => 'dashboard', 
-      'uses' => '\App\Http\Controllers\NotesController@create']);
+    $app->post('dashboard', ['as' => 'dashboard',
+      'uses' => 'NotesController@create']);
 
-    $app->delete('note/{note}', '\App\Http\Controllers\NotesController@delete');
+    $app->delete('note/{note}', 'NotesController@delete');
 
     $app->patch('note/{note}/edit',['as' => 'edit',
-      'uses' => '\App\Http\Controllers\NotesController@update']);
+      'uses' => 'NotesController@update']);
     /*
     $app->get('dashboard', ['as' => 'dashboard', function () {
         return view('dashboard');
